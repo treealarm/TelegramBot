@@ -1,8 +1,6 @@
-﻿using Google.Protobuf.WellKnownTypes;
+﻿using DBLayerLib;
 using GrpcDaprClientLib;
-using LeafletAlarmsGrpc;
 using OSMImageCreator;
-using System.Reflection;
 using System.Text.Json;
 
 namespace TelegramService
@@ -292,6 +290,13 @@ namespace TelegramService
     {
     }
 
+    public static int ConvertToUnixTimestamp(DateTime date)
+    {
+      DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+      TimeSpan diff = date.ToUniversalTime() - origin;
+      return (int)Math.Floor(diff.TotalSeconds);
+    }
+
     private async Task GrpcSendPoint(Message message)
     {
       var figs = new TrackPointsProto();
@@ -317,7 +322,8 @@ namespace TelegramService
         timestamp = DateTime.UnixEpoch.AddSeconds(message.date.Value);
       }
 
-      track.Timestamp = Timestamp.FromDateTime(timestamp);
+
+      track.Timestamp = new Timestamp() { Seconds = ConvertToUnixTimestamp (timestamp) };
 
       fig.Location.Coord.Add(new ProtoCoord()
       {
