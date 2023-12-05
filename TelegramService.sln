@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34322.80
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TelegramService", "TelegramService\TelegramService.csproj", "{D2AADF85-ABAD-4944-997C-BCF21EC5F90E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcDaprLib", "GrpcDaprClientLib\GrpcDaprLib.csproj", "{161C33EE-3505-4445-B628-97BB7A188D39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OSMImageCreator", "OSMImageCreator\OSMImageCreator.csproj", "{1ADDB7EB-F431-4088-B5B2-A20A9403B990}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D2AADF85-ABAD-4944-997C-BCF21EC5F90E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2AADF85-ABAD-4944-997C-BCF21EC5F90E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2AADF85-ABAD-4944-997C-BCF21EC5F90E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2AADF85-ABAD-4944-997C-BCF21EC5F90E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{161C33EE-3505-4445-B628-97BB7A188D39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{161C33EE-3505-4445-B628-97BB7A188D39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{161C33EE-3505-4445-B628-97BB7A188D39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{161C33EE-3505-4445-B628-97BB7A188D39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1ADDB7EB-F431-4088-B5B2-A20A9403B990}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1ADDB7EB-F431-4088-B5B2-A20A9403B990}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1ADDB7EB-F431-4088-B5B2-A20A9403B990}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1ADDB7EB-F431-4088-B5B2-A20A9403B990}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3B183379-19B0-4A19-9F87-4D64A88C5281}
+	EndGlobalSection
+EndGlobal
