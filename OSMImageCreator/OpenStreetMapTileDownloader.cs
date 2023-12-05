@@ -1,4 +1,5 @@
 ﻿using Microsoft.Net.Http.Headers;
+using OSMImageCreator;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -13,9 +14,8 @@ public class OpenStreetMapImageGenerator
     double topLeftLongitude,
     double bottomRightLatitude,
     double bottomRightLongitude,
-    double centerLatitude,
-    double centerLongitude,
-    double radiusInMeters
+    List<CircleToDraw> circles,
+    string filePath
     )
   {
     int zoom = 15; // Уровень масштабирования по умолчанию
@@ -47,12 +47,15 @@ public class OpenStreetMapImageGenerator
     }
 
     var topLeft = TileXYToLatLong(topLeftTile, zoom);
-    var bottomRight = TileXYToLatLong(new Point(bottomRightTile.X + 1, bottomRightTile.Y + 1), zoom);
+    var bottomRight = TileXYToLatLong(new Point(bottomRightTile.X + 1, bottomRightTile.Y + 1), zoom);       
 
-    var pixelRadius = CalculatePixelRadius(topLeft, bottomRight, radiusInMeters, width, height);
-
-    DrawCircle(image, topLeft, bottomRight, centerLongitude, centerLatitude, pixelRadius);
-    image.SaveAsPng(@"M:\MapCash\output.png");
+    foreach (var c in circles)
+    {
+      var pixelRadius = CalculatePixelRadius(topLeft, bottomRight, c.radiusInMeters, width, height);
+      DrawCircle(image, topLeft, bottomRight, c.centerLongitude, c.centerLatitude, pixelRadius, c.color);
+    }
+    
+    image.SaveAsPng(filePath);
 
     var stream = new MemoryStream();
     image.SaveAsPng(stream);
@@ -153,13 +156,28 @@ public class OpenStreetMapImageGenerator
 
 
 
-  private static void DrawCircle(Image<Rgba32> image, PointF topLeft, PointF bottomRight, double centerLongitude, double centerLatitude, float pixelRadius)
+  private static void DrawCircle(Image<Rgba32> image,
+    PointF topLeft,
+    PointF bottomRight,
+    double centerLongitude,
+    double centerLatitude,
+    float pixelRadius,
+    uint color
+    )
   {
     var centerX = (double)((centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
     var centerY = (double)((centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
 
-    var penColor = Color.Red.ToPixel<Rgba32>();
+    //var penColor = Color.Red.ToPixel<Rgba32>();
+    byte red = (byte)(color >> 11);
+    byte green = (byte)((color >> 5) & 63);
+    byte blue = (byte)(color & 31);
+
+    red = (byte)(red * 255 / 31);
+    green = (byte)(green * 255 / 63);
+    blue = (byte)(blue * 255 / 31);
+    var  penColor = new Rgba32(red,green,blue);
     var ellipse = new EllipsePolygon((float)centerX, (float)centerY, pixelRadius);
-    image.Mutate(ctx => ctx.Draw(Color.Green, 2f, ellipse));
+    image.Mutate(ctx => ctx.Draw(penColor, 2f, ellipse));
   }
 }

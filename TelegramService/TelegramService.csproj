@@ -8,7 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GrpcDaprClientLib\GrpcDaprLib.csproj" />
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GrpcDaprClientLib\DBLayerLib.csproj" />
     <ProjectReference Include="..\OSMImageCreator\OSMImageCreator.csproj" />
   </ItemGroup>
 

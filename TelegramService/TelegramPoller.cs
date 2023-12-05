@@ -1,6 +1,8 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using GrpcDaprClientLib;
 using LeafletAlarmsGrpc;
+using OSMImageCreator;
+using System.Reflection;
 using System.Text.Json;
 
 namespace TelegramService
@@ -9,7 +11,7 @@ namespace TelegramService
   {
     private string _botId;
     private string _chatId;
-    GrpcMover _client = new GrpcMover();
+    Database2045 _database = new Database2045();
   
 
     private CancellationToken _cancellationToken = new CancellationToken();
@@ -21,7 +23,6 @@ namespace TelegramService
     {
       _botId = botId;
       _chatId = chatId;
-      _client.Connect($"http://localhost:5000");
     }
 
     private void ProcessCallback(TelegramService.Result r)
@@ -59,6 +60,12 @@ namespace TelegramService
       TelegramSender sender = new TelegramSender();
 
       var replay = await sender.GetPhoto(botId, photo.file_id);
+
+      if (string.IsNullOrEmpty(replay.fileNameRef))
+      {
+        Console.WriteLine("unable to read file");
+        return;
+      }
       string fileNameRef = replay.fileNameRef;
 
       var path = $"{photo.file_unique_id}_{fileNameRef}";
@@ -88,6 +95,71 @@ namespace TelegramService
       {
         _locationRequests.Remove(srcMessage);
 
+      }
+    }
+
+    private async Task ProcessCommand(
+      Result r,
+      string botId,
+      string chat_id)
+    {
+      var command = r.message.text.Split('@')[0];
+
+      if (command == @"/geo")
+      {
+        try
+        {
+          TelegramSender sender = new TelegramSender();
+
+          var msg = new TelegramMessage()
+          {
+            bot_id = botId,
+            chat_id = chat_id,
+            text = ("Group view")
+          };   
+
+          List<CircleToDraw> circles = new List<CircleToDraw>();
+
+          var tracks = Database2045.GetTracksByChatId(chat_id);
+
+          if (tracks != null)
+          {
+            foreach (var track in tracks.Tracks)
+            {
+              var location = track.Figure.Location.Coord.FirstOrDefault();
+
+              var from_id = track.ExtraProps.Where(p => p.PropName == "from.id").FirstOrDefault();
+              uint color = 200;
+              if (from_id != null)
+              {
+                color = (uint)Convert.ToUInt64(from_id.StrVal);
+              }
+
+              if (location == null) { continue; }
+              circles.Add(new CircleToDraw() { centerLatitude = location.Lat, centerLongitude = location.Lon , color = color });
+            }
+          }          
+
+          msg.photo = System.IO.Path.GetFullPath(@"./MapCash/output.png");
+
+          if (circles.Count == 0)
+          { 
+            await OpenStreetMapImageGenerator.GenerateMapImageAsync(55.969369767309274, 37.182615716947076, 55.96320956229026, 37.195751515810755, circles, msg.photo);
+            await sender.SendPhoto(msg);
+            return;
+          }
+          double? latMin = circles.MinBy(l => l.centerLatitude)?.centerLatitude;
+          double? lonMin = circles.MinBy(l => l.centerLongitude)?.centerLongitude;
+          double? latMax = circles.MaxBy(l => l.centerLatitude)?.centerLatitude;
+          double? lonMax = circles.MaxBy(l => l.centerLongitude)?.centerLongitude;
+
+          await OpenStreetMapImageGenerator.GenerateMapImageAsync(latMax.Value, lonMin.Value, latMin.Value, lonMax.Value, circles, msg.photo);
+          await sender.SendPhoto(msg);
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine(ex.Message);
+        }
       }
     }
 
@@ -194,6 +266,12 @@ namespace TelegramService
               {
                 ProcessReplay(r);
               }
+
+              if (r.message.entities != null && 
+                r.message.entities.Where(e => e.type == "bot_command").FirstOrDefault() != null)
+              {
+                await ProcessCommand(r, _botId, _chatId);
+              }
             }
           }
 
@@ -212,10 +290,6 @@ namespace TelegramService
 
     public void Dispose()
     {
-      if (_client != null)
-      {
-        _client.Dispose();
-      }
     }
 
     private async Task GrpcSendPoint(Message message)
@@ -282,10 +356,11 @@ namespace TelegramService
 
       try
       {
-        await _client.UpdateTracks(figs);
+        Database2045.UpdateTracks(figs);
       }
       catch(Exception ex) 
       {
+        await Task.Delay(0);
         Console.WriteLine(ex.Message);
       }
     }

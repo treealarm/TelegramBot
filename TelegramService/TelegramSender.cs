@@ -1,9 +1,12 @@
 ﻿using System.Collections.Specialized;
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TelegramService
 {
@@ -57,7 +60,7 @@ namespace TelegramService
 
         // URL Example:
         // "https://api.telegram.org/bot809045046:AAGtKxtDWu5teRGKW_Li8wFBQuJ-l4A9h38/getUpdates"
-        string URL = $"{_apiBaseUrl}/bot{telegramMsg.bot_id}";
+        string URL = $"{_apiBaseUrl}/bot{telegramMsg.bot_id}/";
 
         using (HttpClient httpClient = new HttpClient())
         {
@@ -66,7 +69,18 @@ namespace TelegramService
           
           httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-          HttpResponseMessage response = await httpClient.PostAsJsonAsync(apiMethod, telegramMsg);
+          var str = JsonSerializer.Serialize(telegramMsg);
+
+          HttpResponseMessage response = await httpClient.PostAsJsonAsync(
+            apiMethod,
+            telegramMsg,
+            new JsonSerializerOptions() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault }
+            );
+
+          if (response.StatusCode != HttpStatusCode.OK)
+          {
+            Console.Error.WriteLine(response.Content.ReadAsStringAsync().Result);
+          }
 
           response.EnsureSuccessStatusCode();
 
@@ -77,7 +91,7 @@ namespace TelegramService
       }
       catch (Exception e)
       {
-        Console.WriteLine(e.Message);
+        Console.Error.WriteLine(e.Message);
       }
 
       return result;
@@ -106,11 +120,15 @@ namespace TelegramService
       {
         using (var fileStream = new FileStream(files[i], FileMode.Open, FileAccess.Read))
         {
-          multiForm.Add(new StreamContent(fileStream), "photo", Path.GetFileName(files[i]));
+          var memoryStream = new MemoryStream((int)fileStream.Length);
+          fileStream.CopyTo(memoryStream);
+          memoryStream.Seek(0, SeekOrigin.Begin);
+          var content = new StreamContent(memoryStream);
+          multiForm.Add(content, "photo", Path.GetFileName(files[i]));
         }
       }
-
-      var result =  await request.PostAsync(SEND_PHOTO, multiForm);
+      var action = request.BaseAddress + SEND_PHOTO;
+      var result =  await request.PostAsync(action, multiForm);
       return await result.Content.ReadAsStringAsync();
     }
 
@@ -128,7 +146,7 @@ namespace TelegramService
         ServicePointManager.ServerCertificateValidationCallback += AcceptAllCertificatePolicy;
 
         string filePath = msg.photo;
-        string URL = $"{_apiBaseUrl}/bot{msg.bot_id}";
+        string URL = $"{_apiBaseUrl}/bot{msg.bot_id}/";
 
         using (HttpClient httpClient = new HttpClient())
         {
@@ -198,7 +216,7 @@ namespace TelegramService
 
         string apiMethod = GET_FILE;
 
-        string URL = $"{_apiBaseUrl}/bot{botId}";
+        string URL = $"{_apiBaseUrl}/bot{botId}/";
         
 
         using (HttpClient httpClient = new HttpClient())

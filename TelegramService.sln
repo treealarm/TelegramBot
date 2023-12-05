@@ -5,9 +5,9 @@ VisualStudioVersion = 17.8.34322.80
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TelegramService", "TelegramService\TelegramService.csproj", "{D2AADF85-ABAD-4944-997C-BCF21EC5F90E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcDaprLib", "GrpcDaprClientLib\GrpcDaprLib.csproj", "{161C33EE-3505-4445-B628-97BB7A188D39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DBLayerLib", "GrpcDaprClientLib\DBLayerLib.csproj", "{161C33EE-3505-4445-B628-97BB7A188D39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OSMImageCreator", "OSMImageCreator\OSMImageCreator.csproj", "{1ADDB7EB-F431-4088-B5B2-A20A9403B990}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSMImageCreator", "OSMImageCreator\OSMImageCreator.csproj", "{1ADDB7EB-F431-4088-B5B2-A20A9403B990}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
