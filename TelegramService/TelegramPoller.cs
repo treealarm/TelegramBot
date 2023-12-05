@@ -301,6 +301,7 @@ namespace TelegramService
     {
       var figs = new TrackPointsProto();
       var track = new TrackPointProto();
+      figs.Tracks = new List<TrackPointProto> { track };
       figs.Tracks.Add(track);
 
       track.Figure = new ProtoGeoObject();
@@ -325,13 +326,15 @@ namespace TelegramService
 
       track.Timestamp = new Timestamp() { Seconds = ConvertToUnixTimestamp (timestamp) };
 
+      fig.Location = new ProtoGeometry() { Type = "Point" };
+      fig.Location.Coord = new List<ProtoCoord>();
       fig.Location.Coord.Add(new ProtoCoord()
       {
         Lat = message.location.latitude,
         Lon = message.location.longitude
       });
 
-
+      track.ExtraProps = new List<ProtoObjExtraProperty> {  };
       track.ExtraProps.Add(new ProtoObjExtraProperty()
       {
         PropName = "track_name",
