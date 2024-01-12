@@ -7,12 +7,19 @@ namespace GrpcDaprClientLib
   public class Database2045
   {
     private static ConcurrentDictionary<string, TrackPointsProto> _dicChatId2Tracks = new ConcurrentDictionary<string, TrackPointsProto>();
+    
+    public static string MapCashPath
+    {
+      get { return "./MapCash"; }
+    }
 
+    private static string _dataPath = $"{MapCashPath}/data.txt";
     public static void Deserialize()
     {
       try
       {
-        var text = File.ReadAllText("./MapCash/data.txt");
+        CreateCashDir();
+        var text = File.ReadAllText(_dataPath);
         _dicChatId2Tracks = JsonSerializer.Deserialize<ConcurrentDictionary<string, TrackPointsProto>>(text);
       }
       catch (Exception ex)
@@ -21,12 +28,20 @@ namespace GrpcDaprClientLib
       }
     }
 
+    private static void CreateCashDir()
+    {
+      bool exists = Directory.Exists(Path.GetDirectoryName(_dataPath));
+      if (!exists)
+        Directory.CreateDirectory(_dataPath);
+    }
     public static void Serialize()
     {
       try
       {
+        CreateCashDir();
+
         var jsonString = JsonSerializer.Serialize(_dicChatId2Tracks, new JsonSerializerOptions() { WriteIndented = true });
-        File.WriteAllText("./MapCash/data.txt", jsonString);
+        File.WriteAllText(_dataPath, jsonString);
       }
       catch (Exception ex)
       {
@@ -55,7 +70,7 @@ namespace GrpcDaprClientLib
         else
         {
           _dicChatId2Tracks[prop_chat.StrVal] = new TrackPointsProto();
-          _dicChatId2Tracks[prop_chat.StrVal].Tracks.Add(track);
+          _dicChatId2Tracks[prop_chat.StrVal].Tracks = [track];
         }
       }
       return true;

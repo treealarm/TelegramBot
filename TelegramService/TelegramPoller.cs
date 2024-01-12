@@ -136,9 +136,13 @@ namespace TelegramService
               if (location == null) { continue; }
               circles.Add(new CircleToDraw() { centerLatitude = location.Lat, centerLongitude = location.Lon , color = color });
             }
-          }          
+          }
 
-          msg.photo = System.IO.Path.GetFullPath(@"./MapCash/output.png");
+          bool exists = Directory.Exists(Database2045.MapCashPath);
+          if (!exists)
+            Directory.CreateDirectory(Database2045.MapCashPath);
+
+          msg.photo = Path.GetFullPath($"{Database2045.MapCashPath}/output.png");
 
           if (circles.Count == 0)
           { 

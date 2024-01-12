@@ -5,6 +5,7 @@ using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using System.Net;
 using System.Net.Http.Headers;
 
 public class OpenStreetMapImageGenerator
@@ -18,7 +19,7 @@ public class OpenStreetMapImageGenerator
     string filePath
     )
   {
-    int zoom = 15; // Уровень масштабирования по умолчанию
+    int zoom = 14; // Уровень масштабирования по умолчанию
 
     var topLeftTile = LatLongToTileXY(topLeftLatitude, topLeftLongitude, zoom);
     var bottomRightTile = LatLongToTileXY(bottomRightLatitude, bottomRightLongitude, zoom);
@@ -26,7 +27,16 @@ public class OpenStreetMapImageGenerator
     var width = (bottomRightTile.X - topLeftTile.X + 1) * 256;
     var height = (bottomRightTile.Y - topLeftTile.Y + 1) * 256;
 
+    while ((width > 1024 || height > 1024) && zoom >= 1)
+    {
+      topLeftTile = LatLongToTileXY(topLeftLatitude, topLeftLongitude, zoom);
+      bottomRightTile = LatLongToTileXY(bottomRightLatitude, bottomRightLongitude, zoom);
+
+      width = (bottomRightTile.X - topLeftTile.X + 1) * 256;
+      height = (bottomRightTile.Y - topLeftTile.Y + 1) * 256;
+    }
     var image = new Image<Rgba32>(width, height);
+
 
     for (int x = topLeftTile.X; x <= bottomRightTile.X; x++)
     {
@@ -40,21 +50,33 @@ public class OpenStreetMapImageGenerator
           {
             var tileX = (x - topLeftTile.X) * 256;
             var tileY = (y - topLeftTile.Y) * 256;
-            image.Mutate(ctx => ctx.DrawImage(imageTile, new Point(tileX, tileY), 1f));
+            var newPoint = new Point(tileX, tileY);
+            image.Mutate(ctx => ctx.DrawImage(imageTile, newPoint, 1f));
           }
         }
       }
     }
 
     var topLeft = TileXYToLatLong(topLeftTile, zoom);
-    var bottomRight = TileXYToLatLong(new Point(bottomRightTile.X + 1, bottomRightTile.Y + 1), zoom);       
+    var bottomRight = TileXYToLatLong(new Point(bottomRightTile.X + 1, bottomRightTile.Y + 1), zoom);
+
+    CircleToDraw? prevCircle = null;
 
     foreach (var c in circles)
     {
       var pixelRadius = CalculatePixelRadius(topLeft, bottomRight, c.radiusInMeters, width, height);
       DrawCircle(image, topLeft, bottomRight, c.centerLongitude, c.centerLatitude, pixelRadius, c.color);
+
+      if (prevCircle != null)
+      {
+        DrawLine(image, topLeft, bottomRight,
+          c.centerLongitude, c.centerLatitude,
+          prevCircle.centerLongitude, prevCircle.centerLatitude,
+          c.color);
+      }
+      prevCircle = c;
     }
-    
+
     image.SaveAsPng(filePath);
 
     var stream = new MemoryStream();
@@ -176,8 +198,39 @@ public class OpenStreetMapImageGenerator
     red = (byte)(red * 255 / 31);
     green = (byte)(green * 255 / 63);
     blue = (byte)(blue * 255 / 31);
-    var  penColor = new Rgba32(red,green,blue);
+    var penColor = new Rgba32(red, green, blue);
     var ellipse = new EllipsePolygon((float)centerX, (float)centerY, pixelRadius);
     image.Mutate(ctx => ctx.Draw(penColor, 2f, ellipse));
+  }
+
+  private static void DrawLine(Image<Rgba32> image,
+  PointF topLeft,
+  PointF bottomRight,
+  double centerLongitude,
+  double centerLatitude,
+  double centerLongitude2,
+  double centerLatitude2,
+  uint color
+  )
+  {
+    var centerX = (double)((centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
+    var centerY = (double)((centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
+
+    var centerX2 = (double)((centerLongitude2 - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
+    var centerY2 = (double)((centerLatitude2 - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
+
+    //var penColor = Color.Red.ToPixel<Rgba32>();
+    byte red = (byte)(color >> 11);
+    byte green = (byte)((color >> 5) & 63);
+    byte blue = (byte)(color & 31);
+
+    red = (byte)(red * 255 / 31);
+    green = (byte)(green * 255 / 63);
+    blue = (byte)(blue * 255 / 31);
+    var penColor = new Rgba32(red, green, blue);
+    image.Mutate(ctx => ctx.DrawLine(penColor, 1,
+    [new PointF((float)centerX, (float)centerY),
+      new PointF((float)centerX2, (float)centerY2)]));
+
   }
 }
