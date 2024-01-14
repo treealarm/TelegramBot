@@ -138,11 +138,8 @@ namespace TelegramService
             }
           }
 
-          bool exists = Directory.Exists(Database2045.MapCashPath);
-          if (!exists)
-            Directory.CreateDirectory(Database2045.MapCashPath);
-
-          msg.photo = Path.GetFullPath($"{Database2045.MapCashPath}/output.png");
+          Database2045.CreateCashDir();
+          msg.photo = Path.Combine($"{Database2045.MapCashAbsolutePath}","output.png");
 
           if (circles.Count == 0)
           { 

@@ -104,7 +104,7 @@ public class OpenStreetMapImageGenerator
 
   private static async Task<byte[]> DownloadTileImageAsync(int zoom, int x, int y)
   {
-    var cacheDirectory = "./MapTilesCache/";
+    var cacheDirectory = System.IO.Path.GetFullPath("./MapTilesCache");
 
     if (!Directory.Exists(cacheDirectory))
     {

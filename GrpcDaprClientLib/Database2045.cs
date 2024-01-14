@@ -8,12 +8,25 @@ namespace GrpcDaprClientLib
   {
     private static ConcurrentDictionary<string, TrackPointsProto> _dicChatId2Tracks = new ConcurrentDictionary<string, TrackPointsProto>();
     
-    public static string MapCashPath
+    public static string MapCashAbsolutePath
     {
-      get { return "./MapCash"; }
+      get 
+      {
+        var path = Path.GetFullPath("./MapCash");
+        return path; 
+      }
     }
 
-    private static string _dataPath = $"{MapCashPath}/data.txt";
+    public static string MapCashTilesAbsolutePath
+    {
+      get
+      {
+        var path = Path.Combine(MapCashAbsolutePath, "MapTilesCache");
+        return path;
+      }
+    }
+
+    private static string _dataPath = $"{MapCashAbsolutePath}/data.txt";
     public static void Deserialize()
     {
       try
@@ -28,11 +41,14 @@ namespace GrpcDaprClientLib
       }
     }
 
-    private static void CreateCashDir()
+    public static void CreateCashDir()
     {
-      bool exists = Directory.Exists(Path.GetDirectoryName(_dataPath));
+      
+      bool exists = Directory.Exists(MapCashAbsolutePath);
       if (!exists)
-        Directory.CreateDirectory(_dataPath);
+      {
+        Directory.CreateDirectory(MapCashAbsolutePath);
+      }        
     }
     public static void Serialize()
     {
