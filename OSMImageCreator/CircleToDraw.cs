@@ -12,5 +12,7 @@ namespace OSMImageCreator
     public double centerLongitude { get; set; }
     public double radiusInMeters { get; set; } = 25;
     public uint color { get; set; } = 100;
+    public required string from_id { get; set; }
+    public DateTime Timestamp { get; set; }
   }
 }

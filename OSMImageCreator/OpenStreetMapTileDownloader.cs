@@ -60,22 +60,43 @@ public class OpenStreetMapImageGenerator
     var topLeft = TileXYToLatLong(topLeftTile, zoom);
     var bottomRight = TileXYToLatLong(new Point(bottomRightTile.X + 1, bottomRightTile.Y + 1), zoom);
 
-    CircleToDraw? prevCircle = null;
+    
+    Dictionary<string,List<CircleToDraw>> map_circles = 
+      new Dictionary<string,List<CircleToDraw>>();
 
     foreach (var c in circles)
     {
       var pixelRadius = CalculatePixelRadius(topLeft, bottomRight, c.radiusInMeters, width, height);
       DrawCircle(image, topLeft, bottomRight, c.centerLongitude, c.centerLatitude, pixelRadius, c.color);
 
-      if (prevCircle != null)
+      if (map_circles.TryGetValue(c.from_id, out var circle_list) )
       {
-        DrawLine(image, topLeft, bottomRight,
-          c.centerLongitude, c.centerLatitude,
-          prevCircle.centerLongitude, prevCircle.centerLatitude,
-          c.color);
+        circle_list.Add(c);
       }
-      prevCircle = c;
+      else
+      {
+        var clist = new List<CircleToDraw>() { c };
+        map_circles[c.from_id] = clist;
+      }      
     }
+
+    foreach(var kvp in map_circles)
+    {
+      CircleToDraw? prevCircle = null;
+      var circleList = kvp.Value.OrderBy(i => i.Timestamp);
+
+      foreach (var c in circleList)
+      {
+        if (prevCircle != null)
+        {
+          DrawLine(image, topLeft, bottomRight,
+            c.centerLongitude, c.centerLatitude,
+            prevCircle.centerLongitude, prevCircle.centerLatitude,
+            c.color);
+        }
+        prevCircle = c;
+      }
+    }    
 
     image.SaveAsPng(filePath);
 

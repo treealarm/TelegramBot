@@ -96,6 +96,17 @@ namespace TelegramService
       }
     }
 
+    private static DateTime ConvertTimestampToDateTime(Timestamp timestamp)
+    {
+      var epochStart = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+      var seconds = timestamp.Seconds;
+      var nanos = timestamp.Nanos;
+
+      var dateTime = epochStart.AddSeconds(seconds).AddTicks(nanos / 100); // Конвертация наносекунд в тики
+      return dateTime;
+    }
+
+
     private async Task ProcessCommand(
       Result r,
       string botId,
@@ -134,7 +145,14 @@ namespace TelegramService
               }
 
               if (location == null) { continue; }
-              circles.Add(new CircleToDraw() { centerLatitude = location.Lat, centerLongitude = location.Lon , color = color });
+              circles.Add(new CircleToDraw() 
+              { 
+                centerLatitude = location.Lat, 
+                centerLongitude = location.Lon , 
+                color = color,
+                from_id = from_id.StrVal,
+                Timestamp = ConvertTimestampToDateTime(track.Timestamp)
+              });
             }
           }
 
