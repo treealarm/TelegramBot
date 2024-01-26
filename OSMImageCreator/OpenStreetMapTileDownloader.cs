@@ -5,8 +5,8 @@ using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using System.Net;
 using System.Net.Http.Headers;
+using System.Numerics;
 
 public class OpenStreetMapImageGenerator
 {
@@ -64,10 +64,17 @@ public class OpenStreetMapImageGenerator
     Dictionary<string,List<CircleToDraw>> map_circles = 
       new Dictionary<string,List<CircleToDraw>>();
 
+    List<Vector2> points
+      = new List<Vector2>();
     foreach (var c in circles)
     {
       var pixelRadius = CalculatePixelRadius(topLeft, bottomRight, c.radiusInMeters, width, height);
-      DrawCircle(image, topLeft, bottomRight, c.centerLongitude, c.centerLatitude, pixelRadius, c.color);
+      var centerX = (double)((c.centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
+      var centerY = (double)((c.centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
+
+      points.Add(new Vector2() { X = (float)centerX, Y = (float)centerY });
+
+      DrawCircle(image, centerX, centerY, pixelRadius, c.color);
 
       if (map_circles.TryGetValue(c.from_id, out var circle_list) )
       {
@@ -89,15 +96,28 @@ public class OpenStreetMapImageGenerator
       {
         if (prevCircle != null)
         {
-          DrawLine(image, topLeft, bottomRight,
-            c.centerLongitude, c.centerLatitude,
-            prevCircle.centerLongitude, prevCircle.centerLatitude,
+          var centerX = (double)((prevCircle.centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
+          var centerY = (double)((prevCircle.centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
+
+          var centerX2 = (double)((c.centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
+          var centerY2 = (double)((c.centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
+
+          DrawLine(image,
+            centerX, centerY,
+            centerX2, centerY2,
             c.color);
         }
         prevCircle = c;
       }
-    }    
+    }
 
+    {
+      var cluster = KMeansCluster.Cluster(points, points.Count/10, 10);
+      foreach (var poligon in cluster.Clusters)
+      {
+        DrawPolygon(image, poligon);
+      }
+    }
     image.SaveAsPng(filePath);
 
     var stream = new MemoryStream();
@@ -105,6 +125,7 @@ public class OpenStreetMapImageGenerator
     stream.Position = 0;
     return stream;
   }
+
 
   private static PointF TileXYToLatLong(Point point, int zoom)
   {
@@ -177,7 +198,6 @@ public class OpenStreetMapImageGenerator
   }
 
 
-
   private static float CalculatePixelRadius(PointF topLeft, PointF bottomRight, double radiusInMeters, int imageWidth, int imageHeight)
   {
     // Получаем разницу широты и долготы области
@@ -197,20 +217,13 @@ public class OpenStreetMapImageGenerator
     return pixelRadius;
   }
 
-
-
   private static void DrawCircle(Image<Rgba32> image,
-    PointF topLeft,
-    PointF bottomRight,
-    double centerLongitude,
-    double centerLatitude,
+    double centerX,
+    double centerY,
     float pixelRadius,
     uint color
     )
   {
-    var centerX = (double)((centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
-    var centerY = (double)((centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
-
     //var penColor = Color.Red.ToPixel<Rgba32>();
     byte red = (byte)(color >> 11);
     byte green = (byte)((color >> 5) & 63);
@@ -225,21 +238,13 @@ public class OpenStreetMapImageGenerator
   }
 
   private static void DrawLine(Image<Rgba32> image,
-  PointF topLeft,
-  PointF bottomRight,
-  double centerLongitude,
-  double centerLatitude,
-  double centerLongitude2,
-  double centerLatitude2,
-  uint color
+    double centerX,
+    double centerY,
+    double centerX2,
+    double centerY2,
+    uint color
   )
   {
-    var centerX = (double)((centerLongitude - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
-    var centerY = (double)((centerLatitude - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
-
-    var centerX2 = (double)((centerLongitude2 - topLeft.X) / (bottomRight.X - topLeft.X) * image.Width);
-    var centerY2 = (double)((centerLatitude2 - topLeft.Y) / (bottomRight.Y - topLeft.Y) * image.Height);
-
     //var penColor = Color.Red.ToPixel<Rgba32>();
     byte red = (byte)(color >> 11);
     byte green = (byte)((color >> 5) & 63);
@@ -254,4 +259,72 @@ public class OpenStreetMapImageGenerator
       new PointF((float)centerX2, (float)centerY2)]));
 
   }
+
+  private static void DrawPolygon(Image<Rgba32> image, List<Vector2> points)
+  {
+    var pts = points.Select(v => new PointF() { X = v.X, Y = v.Y }).ToArray();
+    var fillColor = new Rgba32(100, 200, 100, 70);
+    var penColor = Color.Green.ToPixel<Rgba32>();
+    var pen = new SolidPen(penColor, 1);
+
+    // Нарисуйте полигон на изображении
+    image.Mutate(ctx => ctx.FillPolygon(new DrawingOptions(), 
+      new SolidBrush(fillColor), 
+      pts));
+
+    image.Mutate(ctx =>
+    {
+      // Создайте форму полигона
+      var polygonShape = new Polygon(new LinearLineSegment(pts));
+
+      // Закрасьте форму полигона
+      ctx.Fill(fillColor, polygonShape);
+
+      // Нарисуйте контур полигона
+      ctx.Draw(pen, polygonShape);
+    });
+  }
+
+  static void CreateHeatmap(Image<Rgba32> image, List<Vector2> points, int pointRadius, float intensityScale)
+  {
+    foreach (var point in points)
+    {
+      // Определяем интенсивность тепловой карты в данной точке
+      float intensity = CalculateIntensity(points, point, pointRadius, intensityScale);
+
+      // Определяем цвет в зависимости от интенсивности
+      var color = GetColorFromIntensity(intensity);
+
+      //// Рисуем круг в данной точке с учетом интенсивности
+      //image.Mutate(ctx => ctx.Draw(
+      //  Color.FromRgba(color.R, color.G, color.B, color.A), 
+      //  pointRadius * intensity, new EllipsePolygon(point, pointRadius)));
+
+      // Рисуем эллипс в данной точке с учетом интенсивности
+      image.Mutate(ctx => ctx.Draw(Color.FromRgba(color.R, color.G, color.B, color.A), 
+        pointRadius * intensity, new EllipsePolygon(point, pointRadius)));
+
+    }
+  }
+
+  static float CalculateIntensity(List<Vector2> points, Vector2 currentPoint, int pointRadius, float intensityScale)
+  {
+    float intensity = 0;
+
+    foreach (var point in points)
+    {
+      float distance = Vector2.Distance(point, currentPoint);
+      intensity += MathF.Exp(-distance * distance / (2 * pointRadius * pointRadius));
+    }
+
+    return intensity * intensityScale;
+  }
+
+  static Rgba32 GetColorFromIntensity(float intensity)
+  {
+    // Пример: Чем выше интенсивность, тем ярче красный цвет
+    byte red = (byte)(intensity * 255);
+    return new Rgba32(red, 0, 0);
+  }
+
 }
